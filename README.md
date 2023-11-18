@@ -7,6 +7,8 @@ Automate downloading wow addons without having to use the usual adware apps.
 You will need to download a chromedriver exe whose version matches your installed
 version of chrome. Chances are you can just download the stable version.
 
+https://googlechromelabs.github.io/chrome-for-testing/
+
 Assuming you are on x64 windows, copy the url from the chromedriver win64 row
 to download it. Copy chromedriver.exe from the .zip file and place it alongside
 the wowdl binary.
