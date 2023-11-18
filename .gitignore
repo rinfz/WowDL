@@ -1,0 +1,4 @@
+bin/
+obj/
+addons.txt
+chromedriver.exe
