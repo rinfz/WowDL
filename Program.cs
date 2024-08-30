@@ -16,18 +16,25 @@ static Func<IWebDriver, IWebElement?> ElementIsClickable(By locator) {
 void ProcessFile(IWebDriver driver, string url, string dlPath, int currentCount) {
   driver.Navigate().GoToUrl(url);
   var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-  if (!acceptedCookie) {
-    var iframe = wait.Until(d => d.FindElement(By.CssSelector("iframe[id^=sp_message_iframe]")));
-    driver.SwitchTo().Frame(iframe);
-    var accept = wait.Until(d => d.FindElement(By.XPath("//button[.='Accept']")));
-    accept.Click();
-    driver.SwitchTo().DefaultContent();
-    Thread.Sleep(500);
-    acceptedCookie = true;
-  }
+  try {
+    if (driver.FindElements(By.CssSelector("iframe[id^=sp_message_iframe]")).Count > 0 && !acceptedCookie) {
+      var iframe = wait.Until(d => d.FindElement(By.CssSelector("iframe[id^=sp_message_iframe]")));
+      driver.SwitchTo().Frame(iframe);
+      var accept = wait.Until(d => d.FindElement(By.XPath("//button[.='Accept']")));
+      accept.Click();
+      driver.SwitchTo().DefaultContent();
+      Thread.Sleep(500);
+      acceptedCookie = true;
+    }
+  } catch {}
 
   var dl = wait.Until(ElementIsClickable(By.ClassName("download-cta")))!;
+  if (dl is null) return;
   dl.Click();
+
+  var modalDl = wait.Until(ElementIsClickable(By.CssSelector("section.modal > div.actions > button")));
+  if (modalDl is null) return;
+  modalDl.Click();
 
   var dlWait = new WebDriverWait(driver, TimeSpan.FromSeconds(30));
   dlWait.Until(_ => Directory.GetFiles(dlPath).Count() > currentCount);
