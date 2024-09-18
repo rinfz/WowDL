@@ -1,10 +1,17 @@
-﻿using OpenQA.Selenium;
+﻿// NOTE you can take a screenshot with the following code:
+//     var s = ((ITakesScreenshot)driver).GetScreenshot();
+//     s.SaveAsFile("s.png");
+
+using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
+using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 
 var acceptedCookie = false;
+
+TextInfo textInfo = new CultureInfo("en-US", false).TextInfo;
 
 static Func<IWebDriver, IWebElement?> ElementIsClickable(By locator) {
   return driver => {
@@ -14,6 +21,7 @@ static Func<IWebDriver, IWebElement?> ElementIsClickable(By locator) {
 }
 
 void ProcessFile(IWebDriver driver, string url, string dlPath, int currentCount) {
+  Console.WriteLine("Downloading addon: {0}...", textInfo.ToTitleCase(url.Split("/").Last()));
   driver.Navigate().GoToUrl(url);
   var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
   try {
@@ -51,9 +59,25 @@ var downloadFilesCount = urls.Count();
 var filesBefore = Directory.GetFiles(downloadsDir);
 var currentCount = filesBefore.Count();
 
+var service = ChromeDriverService.CreateDefaultService();
+// disable "Starting driver" message
+service.SuppressInitialDiagnosticInformation = true;
+// disable "DevTools" message
+service.HideCommandPromptWindow = true;
+
 var opts = new ChromeOptions();
-opts.AddArguments("--start-fullscreen");
-var driver = new ChromeDriver(opts);
+opts.AddArguments(["--start-fullscreen", "--headless=new", "--window-size=1920,1080", "--log-level=1"]);
+
+// disable various irrelevant messages
+opts.AddExcludedArgument("enable-logging");
+
+var driver = new ChromeDriver(service, opts);
+
+// Make it work in headless mode
+driver.ExecuteScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
+driver.ExecuteCdpCommand("Network.setUserAgentOverride", new Dictionary<string, object>{
+  { "userAgent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36" }
+});
 
 foreach (var url in urls) {
   ProcessFile(driver, url, downloadsDir, currentCount);
@@ -71,6 +95,8 @@ var newFiles = wait.Until(_ => {
 })!;
 
 driver.Quit();
+
+Console.WriteLine("Addons downloaded, now extracting them to the WoW folder...");
 
 // unzip new files
 
@@ -91,3 +117,5 @@ foreach (var zipFile in newFiles) {
     Console.WriteLine("Unable to process addon, no TOC file found ({0})", zipFile);
   }
 }
+
+Console.WriteLine("Done!");
