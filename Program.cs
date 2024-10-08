@@ -10,6 +10,7 @@ using System.IO.Compression;
 using System.Text;
 
 var acceptedCookie = false;
+var needsTab = false;
 
 TextInfo textInfo = new CultureInfo("en-US", false).TextInfo;
 
@@ -22,6 +23,14 @@ static Func<IWebDriver, IWebElement?> ElementIsClickable(By locator) {
 
 void ProcessFile(IWebDriver driver, string url, string dlPath, int currentCount) {
   Console.WriteLine("Downloading addon: {0}...", textInfo.ToTitleCase(url.Split("/").Last()));
+
+  if (!needsTab) {
+    needsTab = true;
+  } else {
+    // have to use windows and not tabs otherwise the files dont actually download
+    driver.SwitchTo().NewWindow(WindowType.Window);
+  }
+
   driver.Navigate().GoToUrl(url);
   var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
   try {
@@ -43,9 +52,6 @@ void ProcessFile(IWebDriver driver, string url, string dlPath, int currentCount)
   var modalDl = wait.Until(ElementIsClickable(By.CssSelector("section.modal > div.actions > button")));
   if (modalDl is null) return;
   modalDl.Click();
-
-  var dlWait = new WebDriverWait(driver, TimeSpan.FromSeconds(30));
-  dlWait.Until(_ => Directory.GetFiles(dlPath).Count() > currentCount);
 }
 
 var input = File.ReadAllLines("addons.txt");
