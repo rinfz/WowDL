@@ -82,7 +82,7 @@ var driver = new ChromeDriver(service, opts);
 // Make it work in headless mode
 driver.ExecuteScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
 driver.ExecuteCdpCommand("Network.setUserAgentOverride", new Dictionary<string, object>{
-  { "userAgent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36" }
+  { "userAgent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36" }
 });
 
 foreach (var url in urls) {
