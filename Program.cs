@@ -78,8 +78,6 @@ void ProcessFile(IWebDriver driver, string url, string dlPath, int currentCount)
     var modalDl = wait.Until(ElementIsClickable(By.CssSelector("section.modal > div.actions > button")));
     if (modalDl is null) return;
     modalDl.Click();
-  } else {
-    Console.WriteLine("... No update required for {0}", textInfo.ToTitleCase(url.Split("/").Last()));
   }
 }
 
