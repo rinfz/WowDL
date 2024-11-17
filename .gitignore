@@ -3,3 +3,4 @@ bin/
 obj/
 addons.txt
 chromedriver.exe
+cache.txt

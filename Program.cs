@@ -9,6 +9,16 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 
+var cache = new Dictionary<string, long>();
+if (File.Exists("cache.txt")) {
+  foreach (var line in File.ReadLines("cache.txt")) {
+    var parts = line.Split(',');
+    if (parts.Length == 2 && long.TryParse(parts[1], out long timestamp)) {
+      cache[parts[0]] = timestamp;
+    }
+  }
+}
+
 var acceptedCookie = false;
 var needsTab = false;
 
@@ -45,13 +55,32 @@ void ProcessFile(IWebDriver driver, string url, string dlPath, int currentCount)
     }
   } catch {}
 
-  var dl = wait.Until(ElementIsClickable(By.ClassName("download-cta")))!;
-  if (dl is null) return;
-  dl.Click();
+  // check to see when the addon was last updated
+  bool requiresUpdate = true;
+  var detailsBox = wait.Until(d => d.FindElement(By.CssSelector("div.project-details-box > section > dl")));
+  if (detailsBox is not null) {
+    var updatedDt = detailsBox.FindElements(By.TagName("dt")).FirstOrDefault(dt => dt.Text.Contains("Updated"));
+    var updatedDate = updatedDt?.FindElement(By.XPath("following-sibling::dd[1]"));
+    if (updatedDate is not null) {
+      var updatedDateText = updatedDate.Text;
+      var parsedDate = DateTime.ParseExact(updatedDateText, "MMM d, yyyy", CultureInfo.InvariantCulture);
+      var timestamp = ((DateTimeOffset)parsedDate).ToUnixTimeSeconds();
+      requiresUpdate = timestamp > cache.GetValueOrDefault(url, 0);
+      cache[url] = timestamp;
+    }
+  }
 
-  var modalDl = wait.Until(ElementIsClickable(By.CssSelector("section.modal > div.actions > button")));
-  if (modalDl is null) return;
-  modalDl.Click();
+  if (requiresUpdate) {
+    var dl = wait.Until(ElementIsClickable(By.ClassName("download-cta")))!;
+    if (dl is null) return;
+    dl.Click();
+
+    var modalDl = wait.Until(ElementIsClickable(By.CssSelector("section.modal > div.actions > button")));
+    if (modalDl is null) return;
+    modalDl.Click();
+  } else {
+    Console.WriteLine("... No update required for {0}", textInfo.ToTitleCase(url.Split("/").Last()));
+  }
 }
 
 var input = File.ReadAllLines("addons.txt");
@@ -72,7 +101,8 @@ service.SuppressInitialDiagnosticInformation = true;
 service.HideCommandPromptWindow = true;
 
 var opts = new ChromeOptions();
-opts.AddArguments(["--start-fullscreen", "--headless=new", "--window-size=1920,1080", "--log-level=1"]);
+// doesn't seem to work nicely in headless mode
+opts.AddArguments([/*"--start-fullscreen",*/ /*"--headless=new",*/ "--window-size=1920,1080", "--log-level=1", "--window-position=-9999,-9999"]);
 
 // disable various irrelevant messages
 opts.AddExcludedArgument("enable-logging");
@@ -82,7 +112,7 @@ var driver = new ChromeDriver(service, opts);
 // Make it work in headless mode
 driver.ExecuteScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
 driver.ExecuteCdpCommand("Network.setUserAgentOverride", new Dictionary<string, object>{
-  { "userAgent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36" }
+  { "userAgent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.101 Safari/537.36" }
 });
 
 foreach (var url in urls) {
@@ -123,5 +153,7 @@ foreach (var zipFile in newFiles) {
     Console.WriteLine("Unable to process addon, no TOC file found ({0})", zipFile);
   }
 }
+
+File.WriteAllLines("cache.txt", cache.Select(kvp => $"{kvp.Key},{kvp.Value}"));
 
 Console.WriteLine("Done!");
